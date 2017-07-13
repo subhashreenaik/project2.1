@@ -1,3 +1,6 @@
+flume-ng agent --conf-file filecopy.conf name agent1 --conf $FLUME_HOME/conf dflume.root.logger =INFO,console
+
+
 1.
 REGISTER '/usr/local/pig/lib/piggybank.jar';
 
