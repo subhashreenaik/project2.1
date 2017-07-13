@@ -1,0 +1,63 @@
+1.
+REGISTER '/usr/local/pig/lib/piggybank.jar';
+
+DEFINE XPath org.apache.pig.piggybank.evaluation.xml.XPath();
+
+A = LOAD 'StatewiseDistrictwisePhysicalProgress.xml' using org.apache.pig.piggybank.storage.XMLLoader('row') as (x:chararray);
+
+
+B = FOREACH A GENERATE XPath(x,'row/State_Name') as State_Name,
+XPath(x,'row/District_Name') as DistrictName,XPath(x,'row/Project_Objectives_IHHL_BPL')as ProjectObjectivesIHHLBPL:int,XPath(x,'row/Project_Objectives_IHHL_APL') as ProjectObjectivesIHHLAPL:int,XPath(x,'row/Project_Objectives_IHHL_TOTAL') as ProjectObjectivesIHHLTOTAL:int,XPath(x,'row/Project_Objectives_SCW') as ProjectObjectivesSCW:int,XPath(x,'row/Project_Objectives_School_Toilets') as ProjectObjectivesSchoolToilets:int,XPath(x,'row/Project_Objectives_Anganwadi_Toilets') as ProjectObjectivesAnganwadiToilets:int,XPath(x,'row/Project_Objectives_RSM') as ProjectObjectivesRSM:int,XPath(x,'row/Project_Objectives_PC') as ProjectObjectivesPC:int,XPath(x,'row/Project_Performance-IHHL_BPL') as ProjectPerformanceIHHLBPL:int,XPath(x,'row/Project_Performance-IHHL_APL') as ProjectPerformanceIHHLAPL:int,XPath(x,'row/Project_Performance-IHHL_TOTAL') as ProjectPerformanceIHHLTOTAL:int,XPath(x,'row/Project_Performance-SCW') as ProjectPerformanceSCW:int,XPath(x,'row/Project_Performance-School_Toilets') as ProjectPerformanceSchoolToilets:int,XPath(x,'row/Project_Performance-Anganwadi_Toilets') as ProjectPerformanceAnganwadiToilets:int,XPath(x,'row/Project_Performance-RSM') as ProjectPerformanceRSM:int,XPath(x,'row/Project_Performance-PC') as ProjectPerformancePC:int;
+
+
+C = FILTER B BY ProjectObjectivesIHHLBPL == ProjectPerformanceIHHLBPL;
+dump C;
+GroupD = group C ALL;
+COUNT = FOREACH GroupD GENERATE COUNT(C);
+dump Count;
+store C into '/user/acadgild/csqoop' using PigStorage(',');
+
+/*export to RDBMS through sqoop*/
+
+CREATE TABLE data (State_Name varchar(30),DistrictName varchar(30) primary key, ProjectObjectivesIHHLBPL int, ProjectObjectivesIHHLAPL int, ProjectObjectivesIHHLTOTAL int,ProjectObjectivesSCW int,ProjectObjectivesSchoolToilets int, ProjectObjectivesAnganwadiToilets int,ProjectObjectivesRSM int,ProjectObjectivesPC int,ProjectPerformanceIHHLBPL int,ProjectPerformanceIHHLAPL int, ProjectPerformanceIHHLTOTAL int,ProjectPerformanceSCW int,ProjectPerformanceSchoolToilets int,ProjectPerformanceAnganwadiToilets int,ProjectPerformanceRSM int,ProjectPerformancePC int);
+
+sqoop export --connect jdbc:mysql://localhost:3306/emp1 --username 'root' --table 'data' --export-dir /user/acadgild/csqoop -m 1
+
+select * from data;
+
+
+
+2.
+
+UDF.java
+import java.io.IOException;
+
+import org.apache.pig.FilterFunc;
+import org.apache.pig.data.Tuple;
+
+public class FilterUDF extends FilterFunc {
+
+	@Override
+	public Boolean exec(Tuple arg0) throws IOException {
+		
+		if(arg0 == null || arg0.size() == 0)
+			return false;
+		int valu1 = (int) arg0.get(3);
+		int valu2 = (int) arg0.get(11);
+		int value= (valu2/valu1)*100;
+		
+		return (value == 80);
+		 
+	}
+	
+	}
+
+REGISTER '/home/acadgild/workspace/UDF1.jar'
+
+UDFC= FILTER B BY FilterUDF($3,$11);
+dump UDFC;
+store UDFC into '/user/acadgild/csqoop1' using PigStorage(',');
+
+sqoop export --connect jdbc:mysql://localhost:3306/emp1 --username 'root' --table 'data' --export-dir /user/acadgild/csqoop1 -m 1
+select * from data;
+
